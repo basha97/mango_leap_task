@@ -3,6 +3,26 @@ import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:data_connection_checker/data_connection_checker.dart';
+
+class Dog {
+  final int id;
+  final String name;
+  final int age;
+
+  Dog({this.id, this.name, this.age});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'age': age,
+    };
+  }
+}
 
 class ContactList extends StatefulWidget {
   @override
@@ -15,11 +35,79 @@ class _ContactListState extends State<ContactList> {
   List _contact = [];
   bool _loading = false;
 
+  Future<Database> database;
+  int version = 1;
+
   @override
   void initState() {
     super.initState();
+    _checkInternetConnection();
+    WidgetsFlutterBinding.ensureInitialized();
     SchedulerBinding.instance
         .addPostFrameCallback((_) => _loadDataFromApi(context));
+    _getDBPath();
+  }
+
+  _checkInternetConnection() async{
+    print("The statement 'this machine is connected to the Internet' is: ");
+    print(await DataConnectionChecker().hasConnection);
+    print("Current status: ${await DataConnectionChecker().connectionStatus}");
+    print("Last results: ${DataConnectionChecker().lastTryResults}");
+    var listener = DataConnectionChecker().onStatusChange.listen((status) {
+      switch (status) {
+        case DataConnectionStatus.connected:
+          print('Data connection is available.');
+          break;
+        case DataConnectionStatus.disconnected:
+          print('You are disconnected from the internet.');
+          break;
+      }
+    });
+    await Future.delayed(Duration(seconds: 30));
+    await listener.cancel();
+  }
+
+  _getDBPath() async{
+     database = openDatabase(
+      join(await getDatabasesPath(), 'doggie_database.db'),
+      onCreate: (db, version) {
+        // Run the CREATE TABLE statement on the database.
+        return db.execute(
+          "CREATE TABLE dogs(id INTEGER PRIMARY KEY, name TEXT, age INTEGER)",
+        );
+      },
+       version: 1,
+    );
+     final fido = Dog(
+       id: 0,
+       name: 'Fido',
+       age: 35,
+     );
+     //insertDog(fido);
+     dogs();
+  }
+
+  Future<void> insertDog(Dog dog) async {
+    final Database db = await database;
+    await db.insert(
+      'dogs',
+      dog.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Dog>> dogs() async {
+    final Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('dogs');
+    print('the fetch query is $maps');
+    return List.generate(maps.length, (i) {
+      return Dog(
+        id: maps[i]['id'],
+        name: maps[i]['name'],
+        age: maps[i]['age'],
+      );
+    });
+
   }
 
   _loadDataFromApi(context) async{
@@ -27,7 +115,6 @@ class _ContactListState extends State<ContactList> {
       _loading = true;
     });
     Response res = await Dio().get("https://reqres.in/api/users?page=1&per_page=20");
-    print('the resposne is ${res}');
     setState(() {
       _contact = res.data['data'];
       _loading = false;
