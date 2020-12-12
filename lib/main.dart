@@ -1,8 +1,24 @@
+import 'package:data_connection_checker/data_connection_checker.dart';
 import 'package:flutter/material.dart';
 import 'package:mango_leap_task/splash.dart';
+import 'package:provider/provider.dart';
+import 'package:mango_leap_task/connection.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        StreamProvider<DataConnectionStatus>(
+          create: (_) {
+            return DataConnectivityService()
+                .connectivityStreamController
+                .stream;
+          },
+        )
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -22,5 +38,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-
