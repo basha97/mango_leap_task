@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:async';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sql;
 import 'package:data_connection_checker/data_connection_checker.dart';
 
 
@@ -48,26 +48,23 @@ class _ContactListState extends State<ContactList> {
   List _contact = [];
   bool _loading = false;
 
-  Future<Database> database;
+  Future<sql.Database> database;
   int version = 1;
 
   @override
   void initState() {
     super.initState();
-    _checkInternetConnection();
-    WidgetsFlutterBinding.ensureInitialized();
-    _getDBPath();
-    _testingdb();
-    SchedulerBinding.instance
-        .addPostFrameCallback(
-        (_) => _loadDataFromApi(context)
-    );
 
-    contacts();
+    //WidgetsFlutterBinding.ensureInitialized();
+    _checkInternetConnection();
+    // SchedulerBinding.instance
+    //     .addPostFrameCallback(
+    //     (_) => _loadDataFromApi(context)
+    //);
   }
 
   _testingdb() async{
-    final Database db = await Future.delayed(Duration(seconds: 1), () => database);
+    final sql.Database db = await Future.delayed(Duration(seconds: 1), () => database);
     final List<Map<String, dynamic>> maps = await db.query('contact');
     final val = [];
     maps.forEach((element) => val.add(element));
@@ -75,6 +72,8 @@ class _ContactListState extends State<ContactList> {
   }
 
   _checkInternetConnection() async {
+    print('check the internet connection');
+    await _getDBPath();
     print("The statement 'this machine is connected to the Internet' is: ");
     print(await DataConnectionChecker().hasConnection);
     print("Current status: ${await DataConnectionChecker().connectionStatus}");
@@ -83,6 +82,7 @@ class _ContactListState extends State<ContactList> {
       switch (status) {
         case DataConnectionStatus.connected:
           print('Data connection is available.');
+          _loadDataFromApi(context);
           break;
         case DataConnectionStatus.disconnected:
           print('You are disconnected from the internet.');
@@ -96,8 +96,9 @@ class _ContactListState extends State<ContactList> {
   }
 
   _getDBPath() async {
-    database = openDatabase(
-      join(await getDatabasesPath(), 'mango_leap.db'),
+    print('setting up the database');
+    database = sql.openDatabase(
+      path.join(await sql.getDatabasesPath(), 'mango_leap.db'),
       onCreate: (db, version) {
         // Run the CREATE TABLE statement on the database.
         return db.execute(
@@ -106,27 +107,36 @@ class _ContactListState extends State<ContactList> {
       },
       version: 1,
     );
+    final insert = new User(
+      id: 1,
+      first_name: 'First',
+      last_name: 'Second',
+      avatar: 'https://www.gstatic.com/devrel-devsite/prod/vf7e3a995d426e05d42b78fc7d21a14329a91016dc065dc22c480cc8f443ef33e/android/images/lockup.svg',
+    );
+    await insertContact(insert);
   }
 
   Future<void> insertMany() async{
     for(var x in _contact){
-      final Database db = await database;
-      await db.insert('contact', x,conflictAlgorithm: ConflictAlgorithm.replace,);
+      final sql.Database db = await database;
+      await db.insert('contact', x,conflictAlgorithm: sql.ConflictAlgorithm.replace,);
     }
   }
 
   Future<void> insertContact(User usr) async {
-    final Database db = await database;
+    print('insert function');
+    final sql.Database db = await database;
     final value = await db.insert(
       'contact',
       usr.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: sql.ConflictAlgorithm.replace,
     );
   }
 
   Future<List> contacts() async {
+    print('fetch all function');
     //final Database db = await database;
-    final Database db = await Future.delayed(Duration(seconds: 1), () => database);
+    final sql.Database db = await Future.delayed(Duration(seconds: 1), () => database);
     final List<Map<String, dynamic>> maps = await db.query('contact');
     maps.forEach((element) => _contact.add(element));
     print(_contact.length);
@@ -145,8 +155,8 @@ class _ContactListState extends State<ContactList> {
   _loadDataFromApi(context) async {
 
     //contacts();
-    // final dataconnection = Provider.of<DataConnectionStatus>(context);
-    // print('the connection is ${dataconnection}');
+    final dataconnection = Provider.of<DataConnectionStatus>(context, listen: false);
+    print('the connection is ${dataconnection}');
 
     final _pro = Provider.of<DataConnectionStatus>(context, listen: false);
 
@@ -162,17 +172,17 @@ class _ContactListState extends State<ContactList> {
       _contact = list.map((val) => new User.fromJson(val)).toList();
       _loading = false;
     });
-    print('the lenght is after api ${_contact.length}');
-    if(_contact.length < 1){
-      insertMany();
-      contacts();
-    }
+    // print('the lenght is after api ${_contact.length}');
+    // if(_contact.length < 1){
+    //   insertMany();
+    //   contacts();
+    // }
   }
 
   Future<Null> _handleRefresh() async {
     await Future.delayed(Duration(seconds: 3), () async{
       print('refresh');
-      final Database db = await database;
+      final sql.Database db = await database;
       final List<Map<String, dynamic>> maps = await db.query('contact');
       setState(() {
         maps.forEach((element) => _contact.add(element));
@@ -185,14 +195,14 @@ class _ContactListState extends State<ContactList> {
   @override
   Widget build(BuildContext context) {
 
-    _check(BuildContext context) {
-      print('called **********************');
-      final d = Provider.of<DataConnectionStatus>(context, listen: false);
-      print('the connection is $d');
-      contacts();
-    }
+    // _check(BuildContext context) {
+    //   print('called **********************');
+    //   final d = Provider.of<DataConnectionStatus>(context, listen: false);
+    //   print('the connection is $d');
+    //   contacts();
+    // }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _check(context));
+    //WidgetsBinding.instance.addPostFrameCallback((_) => _check(context));
 
 
     return Scaffold(
