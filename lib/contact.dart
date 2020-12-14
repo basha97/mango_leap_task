@@ -9,21 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:data_connection_checker/data_connection_checker.dart';
 
-class Dog {
-  final int id;
-  final String name;
-  final int age;
 
-  Dog({this.id, this.name, this.age});
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'age': age,
-    };
-  }
-}
 
 class User {
   final int id;
@@ -73,7 +59,10 @@ class _ContactListState extends State<ContactList> {
     _getDBPath();
     _testingdb();
     SchedulerBinding.instance
-        .addPostFrameCallback((_) => _loadDataFromApi(context));
+        .addPostFrameCallback(
+        (_) => _loadDataFromApi(context)
+    );
+
     contacts();
   }
 
@@ -100,8 +89,10 @@ class _ContactListState extends State<ContactList> {
           break;
       }
     });
-    await Future.delayed(Duration(seconds: 30));
+
+    await Future.delayed(Duration(seconds: 1));
     await listener.cancel();
+
   }
 
   _getDBPath() async {
@@ -152,10 +143,14 @@ class _ContactListState extends State<ContactList> {
   }
 
   _loadDataFromApi(context) async {
+
     //contacts();
     // final dataconnection = Provider.of<DataConnectionStatus>(context);
     // print('the connection is ${dataconnection}');
 
+    final _pro = Provider.of<DataConnectionStatus>(context, listen: false);
+
+    print('the pro is $_pro');
 
     setState(() {
       _loading = true;

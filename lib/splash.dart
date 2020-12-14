@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:mango_leap_task/contact.dart';
+import 'package:mango_leap_task/user.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -23,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   route() {
     Navigator.pushReplacement(context, MaterialPageRoute(
-        builder: (context) => ContactList()
+        builder: (context) => UserScreen()
     )
     );
   }
